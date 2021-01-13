@@ -1,0 +1,68 @@
+esphome:
+  name: garage
+  platform: ESP8266
+  board: esp01_1m
+
+wifi:
+  ssid: "PrettyFlyForWiFi"
+  password: "WhoWantsPi3"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Garage Fallback Hotspot"
+    password: "RB09UQwxIhl3"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "Garage Door"
+    id: garage_door_sensor
+    device_class: garage_door
+      
+switch:
+  - platform: gpio
+    pin: GPIO12
+    id: relay
+  - platform: template
+    icon: "mdi:arrow-up-down-bold-outline"
+    name: "Garage Control"
+    turn_on_action:
+    - switch.turn_on: relay
+    - delay: 500ms
+    - switch.turn_off: relay
+
+script:
+  - id: garage_switch
+    then:
+      - switch.turn_on: relay
+      - delay: 500ms
+      - switch.turn_off: relay
+      
+# Close garage at night
+time: 
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time: 
+    #Check door at selected times
+    - seconds: 0
+      minutes: 0, 15, 30, 45
+      hours: 00, 01, 02, 03, 04, 05, 22, 23
+      then:
+        if:
+          condition:
+            binary_sensor.is_on: garage_door_sensor 
+          then:
+                - script.execute: garage_switch
